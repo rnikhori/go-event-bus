@@ -1,7 +1,10 @@
 // Package eventbus provides a minimal in-memory, thread-safe publish/subscribe bus.
 package eventbus
 
-import "sync"
+import (
+	"sort"
+	"sync"
+)
 
 type Event struct {
 	Name    string
@@ -15,8 +18,10 @@ type subscription struct {
 	handler Handler
 }
 
+// Bus keys subscriptions by the pattern string passed to Subscribe. A
+// pattern with no "*" segments behaves as a literal topic name.
 type Bus struct {
-	mu   sync.RWMutex
+	mu   sync.Mutex
 	subs map[string][]subscription
 	next uint64
 }
@@ -25,19 +30,24 @@ func New() *Bus {
 	return &Bus{subs: make(map[string][]subscription)}
 }
 
-// Subscribe registers handler for topic and returns an id that can be
-// passed to Unsubscribe to stop delivery to this handler.
+// Subscribe registers handler for topic (which may be a wildcard pattern,
+// see MatchTopic) and returns an id that can be passed to Unsubscribe to
+// stop delivery to this handler.
 func (b *Bus) Subscribe(topic string, handler func(event Event)) uint64 {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	return b.subscribeLocked(topic, handler)
+}
 
+func (b *Bus) subscribeLocked(topic string, handler Handler) uint64 {
 	b.next++
 	id := b.next
 	b.subs[topic] = append(b.subs[topic], subscription{id: id, handler: handler})
 	return id
 }
 
-// Unsubscribe removes the subscription with the given id from topic, if present.
+// Unsubscribe removes the subscription with the given id, registered under
+// the exact pattern string originally passed to Subscribe, if present.
 func (b *Bus) Unsubscribe(topic string, id uint64) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -51,13 +61,26 @@ func (b *Bus) Unsubscribe(topic string, id uint64) {
 	}
 }
 
+// matchingSubs returns every subscription whose registered pattern matches
+// topic, ordered by subscription id (i.e. the order handlers were
+// registered in).
+func (b *Bus) matchingSubs(topic string) []subscription {
+	var result []subscription
+	for pattern, subs := range b.subs {
+		if MatchTopic(pattern, topic) {
+			result = append(result, subs...)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].id < result[j].id })
+	return result
+}
+
 // Publish synchronously delivers event to every handler currently
-// subscribed to topic, in subscription order.
+// subscribed to a pattern matching topic, in subscription order.
 func (b *Bus) Publish(topic string, event Event) {
-	b.mu.RLock()
-	subs := make([]subscription, len(b.subs[topic]))
-	copy(subs, b.subs[topic])
-	b.mu.RUnlock()
+	b.mu.Lock()
+	subs := b.matchingSubs(topic)
+	b.mu.Unlock()
 
 	for _, s := range subs {
 		s.handler(event)
