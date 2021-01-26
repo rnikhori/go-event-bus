@@ -33,6 +33,23 @@ func TestMultipleSubscribersSameTopic(t *testing.T) {
 	}
 }
 
+func TestPublishOnlyReachesExactTopicSubscribers(t *testing.T) {
+	bus := New()
+	var ordersCalls, usersCalls int
+
+	bus.Subscribe("orders", func(e Event) { ordersCalls++ })
+	bus.Subscribe("users", func(e Event) { usersCalls++ })
+
+	bus.Publish("orders", Event{Name: "created"})
+
+	if ordersCalls != 1 {
+		t.Fatalf("expected orders handler to be called once, got %d", ordersCalls)
+	}
+	if usersCalls != 0 {
+		t.Fatalf("expected users handler to not be called, got %d", usersCalls)
+	}
+}
+
 func TestUnsubscribeStopsDelivery(t *testing.T) {
 	bus := New()
 	count := 0
