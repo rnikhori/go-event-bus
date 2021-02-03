@@ -50,6 +50,35 @@ func TestPublishOnlyReachesExactTopicSubscribers(t *testing.T) {
 	}
 }
 
+func TestWildcardSubscriptionReceivesMatchingTopics(t *testing.T) {
+	bus := New()
+	var received []string
+
+	bus.Subscribe("orders.*", func(e Event) { received = append(received, e.Name) })
+
+	bus.Publish("orders.created", Event{Name: "created"})
+	bus.Publish("orders.shipped", Event{Name: "shipped"})
+	bus.Publish("users.created", Event{Name: "created"})
+
+	if len(received) != 2 || received[0] != "created" || received[1] != "shipped" {
+		t.Fatalf("expected wildcard subscriber to receive [created shipped], got %v", received)
+	}
+}
+
+func TestWildcardAndExactSubscribersBothFire(t *testing.T) {
+	bus := New()
+	var calls []string
+
+	bus.Subscribe("orders.created", func(e Event) { calls = append(calls, "exact") })
+	bus.Subscribe("orders.*", func(e Event) { calls = append(calls, "wildcard") })
+
+	bus.Publish("orders.created", Event{Name: "created"})
+
+	if len(calls) != 2 {
+		t.Fatalf("expected both exact and wildcard subscribers to fire, got %v", calls)
+	}
+}
+
 func TestUnsubscribeStopsDelivery(t *testing.T) {
 	bus := New()
 	count := 0
