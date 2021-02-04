@@ -26,6 +26,24 @@ func main() {
 }
 ```
 
+## Wildcard subscriptions
+
+Subscribe to a dot-separated pattern instead of a literal topic name. A `*`
+segment matches exactly one segment of the published topic:
+
+```go
+bus.Subscribe("orders.*", func(e eventbus.Event) {
+	fmt.Println("order event:", e.Name, e.Payload)
+})
+
+bus.Publish("orders.created", eventbus.Event{Name: "created"}) // matches
+bus.Publish("orders.shipped", eventbus.Event{Name: "shipped"}) // matches
+bus.Publish("orders", eventbus.Event{Name: "created"})         // does not match
+```
+
+Exact-topic subscribers and wildcard subscribers can both be registered for
+overlapping topics; a published event reaches every matching subscription.
+
 Run the demo:
 
 ```sh
