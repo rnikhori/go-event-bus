@@ -76,13 +76,25 @@ func (b *Bus) matchingSubs(topic string) []subscription {
 }
 
 // Publish synchronously delivers event to every handler currently
-// subscribed to a pattern matching topic, in subscription order.
+// subscribed to a pattern matching topic, in subscription order. A handler
+// that panics does not stop delivery to the remaining handlers; see
+// dispatchOne.
 func (b *Bus) Publish(topic string, event Event) {
 	b.mu.Lock()
 	subs := b.matchingSubs(topic)
 	b.mu.Unlock()
 
 	for _, s := range subs {
-		s.handler(event)
+		b.dispatchOne(s, topic, event)
 	}
+}
+
+// dispatchOne invokes a single handler, recovering from any panic so that
+// one misbehaving handler cannot block delivery to the rest of the
+// subscribers or crash the publishing goroutine.
+func (b *Bus) dispatchOne(s subscription, topic string, event Event) {
+	defer func() {
+		recover()
+	}()
+	s.handler(event)
 }
