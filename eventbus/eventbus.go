@@ -13,6 +13,11 @@ type Event struct {
 
 type Handler func(event Event)
 
+// PanicHandler is invoked, outside of any internal lock, whenever a
+// subscribed Handler panics during dispatch. It receives the topic the
+// event was published on, the event itself, and the recovered value.
+type PanicHandler func(topic string, event Event, recovered interface{})
+
 type subscription struct {
 	id      uint64
 	handler Handler
@@ -21,9 +26,10 @@ type subscription struct {
 // Bus keys subscriptions by the pattern string passed to Subscribe. A
 // pattern with no "*" segments behaves as a literal topic name.
 type Bus struct {
-	mu   sync.Mutex
-	subs map[string][]subscription
-	next uint64
+	mu      sync.Mutex
+	subs    map[string][]subscription
+	next    uint64
+	onPanic PanicHandler
 }
 
 func New() *Bus {
@@ -89,12 +95,27 @@ func (b *Bus) Publish(topic string, event Event) {
 	}
 }
 
+// OnPanic registers a callback invoked whenever a handler panics during
+// dispatch. Only one callback can be registered at a time; a later call
+// replaces the previous one. Pass nil to stop observing panics.
+func (b *Bus) OnPanic(handler PanicHandler) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.onPanic = handler
+}
+
 // dispatchOne invokes a single handler, recovering from any panic so that
 // one misbehaving handler cannot block delivery to the rest of the
 // subscribers or crash the publishing goroutine.
 func (b *Bus) dispatchOne(s subscription, topic string, event Event) {
+	b.mu.Lock()
+	onPanic := b.onPanic
+	b.mu.Unlock()
+
 	defer func() {
-		recover()
+		if r := recover(); r != nil && onPanic != nil {
+			onPanic(topic, event, r)
+		}
 	}()
 	s.handler(event)
 }
