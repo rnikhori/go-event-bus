@@ -79,6 +79,41 @@ func TestWildcardAndExactSubscribersBothFire(t *testing.T) {
 	}
 }
 
+func TestPanicInHandlerDoesNotStopOtherHandlers(t *testing.T) {
+	bus := New()
+	var secondCalled bool
+
+	bus.Subscribe("topic", func(e Event) { panic("boom") })
+	bus.Subscribe("topic", func(e Event) { secondCalled = true })
+
+	bus.Publish("topic", Event{Name: "ping"})
+
+	if !secondCalled {
+		t.Fatal("expected second handler to run despite first handler panicking")
+	}
+}
+
+func TestOnPanicReceivesRecoveredValue(t *testing.T) {
+	bus := New()
+	var gotTopic string
+	var gotRecovered interface{}
+
+	bus.OnPanic(func(topic string, event Event, recovered interface{}) {
+		gotTopic = topic
+		gotRecovered = recovered
+	})
+	bus.Subscribe("topic", func(e Event) { panic("boom") })
+
+	bus.Publish("topic", Event{Name: "ping"})
+
+	if gotTopic != "topic" {
+		t.Fatalf("expected OnPanic to receive topic %q, got %q", "topic", gotTopic)
+	}
+	if gotRecovered != "boom" {
+		t.Fatalf("expected OnPanic to receive recovered value %q, got %v", "boom", gotRecovered)
+	}
+}
+
 func TestUnsubscribeStopsDelivery(t *testing.T) {
 	bus := New()
 	count := 0
