@@ -44,6 +44,18 @@ bus.Publish("orders", eventbus.Event{Name: "created"})         // does not match
 Exact-topic subscribers and wildcard subscribers can both be registered for
 overlapping topics; a published event reaches every matching subscription.
 
+## Panic isolation
+
+If a handler panics during `Publish`, the bus recovers and continues
+delivering the event to the remaining subscribers. Register `OnPanic` to
+observe (e.g. log) recovered panics instead of silently discarding them:
+
+```go
+bus.OnPanic(func(topic string, e eventbus.Event, recovered interface{}) {
+	log.Printf("handler for %q panicked: %v", topic, recovered)
+})
+```
+
 Run the demo:
 
 ```sh
