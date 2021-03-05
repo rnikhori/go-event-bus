@@ -19,8 +19,9 @@ type Handler func(event Event)
 type PanicHandler func(topic string, event Event, recovered interface{})
 
 type subscription struct {
-	id      uint64
-	handler Handler
+	id       uint64
+	priority int
+	handler  Handler
 }
 
 // Bus keys subscriptions by the pattern string passed to Subscribe. A
@@ -40,15 +41,24 @@ func New() *Bus {
 // see MatchTopic) and returns an id that can be passed to Unsubscribe to
 // stop delivery to this handler.
 func (b *Bus) Subscribe(topic string, handler func(event Event)) uint64 {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.subscribeLocked(topic, handler)
+	return b.SubscribeWithPriority(topic, 0, handler)
 }
 
-func (b *Bus) subscribeLocked(topic string, handler Handler) uint64 {
+// SubscribeWithPriority registers handler for topic like Subscribe, but
+// with an explicit priority. During synchronous Publish, handlers with a
+// higher priority run before handlers with a lower one; handlers that
+// share a priority run in subscription order. The default priority used by
+// Subscribe is 0.
+func (b *Bus) SubscribeWithPriority(topic string, priority int, handler Handler) uint64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.subscribeLocked(topic, priority, handler)
+}
+
+func (b *Bus) subscribeLocked(topic string, priority int, handler Handler) uint64 {
 	b.next++
 	id := b.next
-	b.subs[topic] = append(b.subs[topic], subscription{id: id, handler: handler})
+	b.subs[topic] = append(b.subs[topic], subscription{id: id, priority: priority, handler: handler})
 	return id
 }
 
