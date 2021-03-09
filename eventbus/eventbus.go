@@ -78,8 +78,8 @@ func (b *Bus) Unsubscribe(topic string, id uint64) {
 }
 
 // matchingSubs returns every subscription whose registered pattern matches
-// topic, ordered by subscription id (i.e. the order handlers were
-// registered in).
+// topic, ordered first by subscription id (the order handlers were
+// registered in) and then stably by priority, highest first.
 func (b *Bus) matchingSubs(topic string) []subscription {
 	var result []subscription
 	for pattern, subs := range b.subs {
@@ -88,6 +88,7 @@ func (b *Bus) matchingSubs(topic string) []subscription {
 		}
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].id < result[j].id })
+	sort.SliceStable(result, func(i, j int) bool { return result[i].priority > result[j].priority })
 	return result
 }
 
