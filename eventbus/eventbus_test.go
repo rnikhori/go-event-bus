@@ -1,6 +1,9 @@
 package eventbus
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestBasicPublishSubscribe(t *testing.T) {
 	bus := New()
@@ -111,6 +114,38 @@ func TestOnPanicReceivesRecoveredValue(t *testing.T) {
 	}
 	if gotRecovered != "boom" {
 		t.Fatalf("expected OnPanic to receive recovered value %q, got %v", "boom", gotRecovered)
+	}
+}
+
+func TestPriorityOrdersSynchronousDispatch(t *testing.T) {
+	bus := New()
+	var order []string
+
+	bus.SubscribeWithPriority("topic", 0, func(e Event) { order = append(order, "low") })
+	bus.SubscribeWithPriority("topic", 10, func(e Event) { order = append(order, "high") })
+	bus.SubscribeWithPriority("topic", 5, func(e Event) { order = append(order, "mid") })
+
+	bus.Publish("topic", Event{Name: "ping"})
+
+	want := []string{"high", "mid", "low"}
+	if !reflect.DeepEqual(order, want) {
+		t.Fatalf("expected dispatch order %v, got %v", want, order)
+	}
+}
+
+func TestEqualPriorityKeepsSubscriptionOrder(t *testing.T) {
+	bus := New()
+	var order []string
+
+	bus.SubscribeWithPriority("topic", 1, func(e Event) { order = append(order, "first") })
+	bus.SubscribeWithPriority("topic", 1, func(e Event) { order = append(order, "second") })
+	bus.SubscribeWithPriority("topic", 1, func(e Event) { order = append(order, "third") })
+
+	bus.Publish("topic", Event{Name: "ping"})
+
+	want := []string{"first", "second", "third"}
+	if !reflect.DeepEqual(order, want) {
+		t.Fatalf("expected dispatch order %v, got %v", want, order)
 	}
 }
 
