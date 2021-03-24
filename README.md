@@ -56,6 +56,21 @@ bus.OnPanic(func(topic string, e eventbus.Event, recovered interface{}) {
 })
 ```
 
+## Handler priority
+
+`SubscribeWithPriority` lets a handler run before or after others on the
+same topic during synchronous `Publish`. Higher priority runs first; ties
+fall back to registration order:
+
+```go
+bus.SubscribeWithPriority("orders.created", 10, func(e eventbus.Event) {
+	fmt.Println("validate first")
+})
+bus.SubscribeWithPriority("orders.created", 0, func(e eventbus.Event) {
+	fmt.Println("then notify")
+})
+```
+
 Run the demo:
 
 ```sh
