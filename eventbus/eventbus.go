@@ -31,6 +31,9 @@ type Bus struct {
 	subs    map[string][]subscription
 	next    uint64
 	onPanic PanicHandler
+
+	published uint64
+	delivered uint64
 }
 
 func New() *Bus {
@@ -99,6 +102,7 @@ func (b *Bus) matchingSubs(topic string) []subscription {
 func (b *Bus) Publish(topic string, event Event) {
 	b.mu.Lock()
 	subs := b.matchingSubs(topic)
+	b.published++
 	b.mu.Unlock()
 
 	for _, s := range subs {
@@ -121,6 +125,7 @@ func (b *Bus) OnPanic(handler PanicHandler) {
 func (b *Bus) dispatchOne(s subscription, topic string, event Event) {
 	b.mu.Lock()
 	onPanic := b.onPanic
+	b.delivered++
 	b.mu.Unlock()
 
 	defer func() {
