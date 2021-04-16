@@ -34,10 +34,30 @@ type Bus struct {
 
 	published uint64
 	delivered uint64
+	perTopic  map[string]*topicStats
+}
+
+type topicStats struct {
+	published uint64
+	delivered uint64
 }
 
 func New() *Bus {
-	return &Bus{subs: make(map[string][]subscription)}
+	return &Bus{
+		subs:     make(map[string][]subscription),
+		perTopic: make(map[string]*topicStats),
+	}
+}
+
+// perTopicLocked returns the stats bucket for topic, creating it if
+// necessary. b.mu must be held by the caller.
+func (b *Bus) perTopicLocked(topic string) *topicStats {
+	ts, ok := b.perTopic[topic]
+	if !ok {
+		ts = &topicStats{}
+		b.perTopic[topic] = ts
+	}
+	return ts
 }
 
 // Subscribe registers handler for topic (which may be a wildcard pattern,
@@ -103,6 +123,7 @@ func (b *Bus) Publish(topic string, event Event) {
 	b.mu.Lock()
 	subs := b.matchingSubs(topic)
 	b.published++
+	b.perTopicLocked(topic).published++
 	b.mu.Unlock()
 
 	for _, s := range subs {
@@ -126,6 +147,7 @@ func (b *Bus) dispatchOne(s subscription, topic string, event Event) {
 	b.mu.Lock()
 	onPanic := b.onPanic
 	b.delivered++
+	b.perTopicLocked(topic).delivered++
 	b.mu.Unlock()
 
 	defer func() {
