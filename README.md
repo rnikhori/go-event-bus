@@ -71,6 +71,20 @@ bus.SubscribeWithPriority("orders.created", 0, func(e eventbus.Event) {
 })
 ```
 
+## Metrics
+
+`Stats()` returns a snapshot of how many events have been published and how
+many handler invocations have happened, both bus-wide and per topic:
+
+```go
+stats := bus.Stats()
+fmt.Println("total published:", stats.Published)
+fmt.Println("total delivered:", stats.Delivered)
+fmt.Println("orders delivered:", stats.PerTopic["orders"].Delivered)
+```
+
+A handler invocation counts toward `Delivered` even if the handler panics.
+
 Run the demo:
 
 ```sh
