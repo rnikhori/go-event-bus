@@ -35,6 +35,9 @@ type Bus struct {
 	published uint64
 	delivered uint64
 	perTopic  map[string]*topicStats
+
+	history    map[string][]Event
+	historyCap map[string]int
 }
 
 type topicStats struct {
@@ -44,8 +47,10 @@ type topicStats struct {
 
 func New() *Bus {
 	return &Bus{
-		subs:     make(map[string][]subscription),
-		perTopic: make(map[string]*topicStats),
+		subs:       make(map[string][]subscription),
+		perTopic:   make(map[string]*topicStats),
+		history:    make(map[string][]Event),
+		historyCap: make(map[string]int),
 	}
 }
 
@@ -124,6 +129,7 @@ func (b *Bus) Publish(topic string, event Event) {
 	subs := b.matchingSubs(topic)
 	b.published++
 	b.perTopicLocked(topic).published++
+	b.recordHistoryLocked(topic, event)
 	b.mu.Unlock()
 
 	for _, s := range subs {
