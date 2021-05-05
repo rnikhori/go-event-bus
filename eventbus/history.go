@@ -1,5 +1,9 @@
 package eventbus
 
+// defaultHistoryCapacity is how many recent events are retained per topic
+// before any SubscribeWithReplay call has requested a larger capacity.
+const defaultHistoryCapacity = 64
+
 // SubscribeWithReplay registers handler for topic (an exact topic, not a
 // wildcard pattern) and immediately replays up to n of the most recently
 // published events for that topic to handler before returning, so a new
@@ -12,6 +16,9 @@ func (b *Bus) SubscribeWithReplay(topic string, n int, handler Handler) uint64 {
 		b.historyCap[topic] = n
 	}
 	hist := b.history[topic]
+	if n >= 0 && len(hist) > n {
+		hist = hist[len(hist)-n:]
+	}
 	replay := make([]Event, len(hist))
 	copy(replay, hist)
 	id := b.subscribeLocked(topic, 0, handler)
@@ -23,13 +30,14 @@ func (b *Bus) SubscribeWithReplay(topic string, n int, handler Handler) uint64 {
 	return id
 }
 
-// recordHistoryLocked appends event to topic's history buffer if a replay
-// buffer has been requested for topic (via SubscribeWithReplay), trimming
-// the buffer to its configured capacity. b.mu must be held by the caller.
+// recordHistoryLocked appends event to topic's history buffer, trimming it
+// to the topic's configured capacity (or defaultHistoryCapacity if none has
+// been explicitly requested yet via SubscribeWithReplay). b.mu must be held
+// by the caller.
 func (b *Bus) recordHistoryLocked(topic string, event Event) {
 	capacity := b.historyCap[topic]
 	if capacity <= 0 {
-		return
+		capacity = defaultHistoryCapacity
 	}
 
 	buf := append(b.history[topic], event)
