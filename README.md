@@ -85,6 +85,26 @@ fmt.Println("orders delivered:", stats.PerTopic["orders"].Delivered)
 
 A handler invocation counts toward `Delivered` even if the handler panics.
 
+## Event history and replay
+
+The bus retains a capped buffer of recently published events per topic.
+`SubscribeWithReplay` subscribes a handler and immediately replays up to
+`n` of the most recent past events for that topic before returning, then
+continues delivering live events as normal:
+
+```go
+bus.Publish("orders", eventbus.Event{Name: "created"})
+bus.Publish("orders", eventbus.Event{Name: "paid"})
+
+// A subscriber that joins late still sees recent history first.
+bus.SubscribeWithReplay("orders", 10, func(e eventbus.Event) {
+	fmt.Println("catching up on:", e.Name)
+})
+```
+
+`SubscribeWithReplay` only supports exact topic names, not wildcard
+patterns.
+
 Run the demo:
 
 ```sh
