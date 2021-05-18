@@ -35,13 +35,7 @@ func (h *Handle) Done() <-chan struct{} {
 // different priorities.
 func (b *Bus) PublishAsync(topic string, event Event) *Handle {
 	h := newHandle()
-
-	b.mu.Lock()
-	subs := b.matchingSubs(topic)
-	b.published++
-	b.perTopicLocked(topic).published++
-	b.recordHistoryLocked(topic, event)
-	b.mu.Unlock()
+	subs := b.preparePublish(topic, event)
 
 	h.wg.Add(len(subs))
 	for _, s := range subs {

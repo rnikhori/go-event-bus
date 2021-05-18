@@ -125,16 +125,25 @@ func (b *Bus) matchingSubs(topic string) []subscription {
 // that panics does not stop delivery to the remaining handlers; see
 // dispatchOne.
 func (b *Bus) Publish(topic string, event Event) {
-	b.mu.Lock()
-	subs := b.matchingSubs(topic)
-	b.published++
-	b.perTopicLocked(topic).published++
-	b.recordHistoryLocked(topic, event)
-	b.mu.Unlock()
+	subs := b.preparePublish(topic, event)
 
 	for _, s := range subs {
 		b.dispatchOne(s, topic, event)
 	}
+}
+
+// preparePublish records the bookkeeping common to Publish and
+// PublishAsync (metrics and history) and returns the snapshot of
+// subscriptions that should receive event, in dispatch order.
+func (b *Bus) preparePublish(topic string, event Event) []subscription {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	subs := b.matchingSubs(topic)
+	b.published++
+	b.perTopicLocked(topic).published++
+	b.recordHistoryLocked(topic, event)
+	return subs
 }
 
 // OnPanic registers a callback invoked whenever a handler panics during
