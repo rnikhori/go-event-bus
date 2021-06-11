@@ -105,6 +105,22 @@ bus.SubscribeWithReplay("orders", 10, func(e eventbus.Event) {
 `SubscribeWithReplay` only supports exact topic names, not wildcard
 patterns.
 
+## Async publish
+
+`PublishAsync` dispatches to every matching handler in its own goroutine
+and returns immediately with a `*Handle`. Use `Wait()` to block until every
+dispatched handler has finished, or `Done()` for a channel suitable for use
+in a `select`:
+
+```go
+h := bus.PublishAsync("orders.created", eventbus.Event{Name: "created", Payload: "order-123"})
+h.Wait() // or: <-h.Done()
+```
+
+Handlers dispatched this way still benefit from panic recovery, but since
+they run concurrently there is no guaranteed completion order between
+them, even across different priorities.
+
 Run the demo:
 
 ```sh
