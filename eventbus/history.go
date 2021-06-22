@@ -12,6 +12,10 @@ const defaultHistoryCapacity = 64
 // any previously requested capacity.
 func (b *Bus) SubscribeWithReplay(topic string, n int, handler Handler) uint64 {
 	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+		return 0
+	}
 	if n > b.historyCap[topic] {
 		b.historyCap[topic] = n
 	}

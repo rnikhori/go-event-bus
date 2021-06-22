@@ -38,6 +38,8 @@ type Bus struct {
 
 	history    map[string][]Event
 	historyCap map[string]int
+
+	closed bool
 }
 
 type topicStats struct {
@@ -80,6 +82,9 @@ func (b *Bus) Subscribe(topic string, handler func(event Event)) uint64 {
 func (b *Bus) SubscribeWithPriority(topic string, priority int, handler Handler) uint64 {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.closed {
+		return 0
+	}
 	return b.subscribeLocked(topic, priority, handler)
 }
 
@@ -138,6 +143,10 @@ func (b *Bus) Publish(topic string, event Event) {
 func (b *Bus) preparePublish(topic string, event Event) []subscription {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	if b.closed {
+		return nil
+	}
 
 	subs := b.matchingSubs(topic)
 	b.published++
