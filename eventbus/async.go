@@ -37,6 +37,11 @@ func (b *Bus) PublishAsync(topic string, event Event) *Handle {
 	h := newHandle()
 	subs := b.preparePublish(topic, event)
 
+	if len(subs) == 0 {
+		close(h.done)
+		return h
+	}
+
 	h.wg.Add(len(subs))
 	for _, s := range subs {
 		s := s
