@@ -121,6 +121,22 @@ Handlers dispatched this way still benefit from panic recovery, but since
 they run concurrently there is no guaranteed completion order between
 them, even across different priorities.
 
+## Shutdown
+
+`Close` stops the bus from accepting new subscriptions or publishes.
+`Subscribe`/`SubscribeWithPriority`/`SubscribeWithReplay` return an id of 0
+and `Publish`/`PublishAsync` become no-ops after `Close`:
+
+```go
+bus.Close()
+bus.Publish("orders", eventbus.Event{Name: "ignored"}) // delivered to nobody
+```
+
+`Close` does not wait for handlers already dispatched by an earlier
+`PublishAsync` call to finish; call `Wait()` on their `Handle` first if
+that matters. `Close` is idempotent: calling it again returns
+`ErrAlreadyClosed`.
+
 Run the demo:
 
 ```sh
