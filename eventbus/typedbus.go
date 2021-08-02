@@ -46,3 +46,22 @@ func (tb *TypedBus[T]) Publish(topic string, payload T) {
 func (tb *TypedBus[T]) Unsubscribe(topic string, id uint64) {
 	tb.bus.Unsubscribe(topic, id)
 }
+
+// SubscribeWithPriority registers handler for topic with an explicit
+// priority; see Bus.SubscribeWithPriority.
+func (tb *TypedBus[T]) SubscribeWithPriority(topic string, priority int, handler TypedHandler[T]) uint64 {
+	return tb.bus.SubscribeWithPriority(topic, priority, tb.adapt(handler))
+}
+
+// SubscribeWithReplay registers handler for topic and immediately replays
+// up to n recently published events of type T for that topic; see
+// Bus.SubscribeWithReplay.
+func (tb *TypedBus[T]) SubscribeWithReplay(topic string, n int, handler TypedHandler[T]) uint64 {
+	return tb.bus.SubscribeWithReplay(topic, n, tb.adapt(handler))
+}
+
+// PublishAsync wraps payload in an Event and publishes it to topic using
+// Bus.PublishAsync, returning the resulting Handle.
+func (tb *TypedBus[T]) PublishAsync(topic string, payload T) *Handle {
+	return tb.bus.PublishAsync(topic, Event{Name: topic, Payload: payload})
+}
