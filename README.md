@@ -137,6 +137,31 @@ bus.Publish("orders", eventbus.Event{Name: "ignored"}) // delivered to nobody
 that matters. `Close` is idempotent: calling it again returns
 `ErrAlreadyClosed`.
 
+## Typed wrapper
+
+`TypedBus[T]` wraps a `*Bus` to give a single payload type a type-safe API,
+avoiding `interface{}` assertions at call sites:
+
+```go
+type OrderCreated struct {
+	ID string
+}
+
+orders := eventbus.NewTyped[OrderCreated](bus)
+
+orders.Subscribe("orders.created", func(name string, payload OrderCreated) {
+	fmt.Println("order:", payload.ID)
+})
+
+orders.Publish("orders.created", OrderCreated{ID: "order-123"})
+```
+
+A `TypedBus` supports `Subscribe`, `SubscribeWithPriority`,
+`SubscribeWithReplay`, `Publish`, `PublishAsync`, and `Unsubscribe`.
+Multiple `TypedBus` wrappers, including for different payload types, can
+share the same underlying `Bus`; a `TypedBus` handler silently ignores
+events whose payload isn't of type `T`.
+
 Run the demo:
 
 ```sh
