@@ -11,6 +11,7 @@ func main() {
 
 	basicDemo(bus)
 	wildcardDemo(bus)
+	replayDemo(bus)
 }
 
 func basicDemo(bus *eventbus.Bus) {
@@ -48,4 +49,15 @@ func wildcardDemo(bus *eventbus.Bus) {
 	bus.Publish("orders.created", eventbus.Event{Name: "created", Payload: "order-456"})
 	bus.Publish("orders.shipped", eventbus.Event{Name: "shipped", Payload: "order-456"})
 	bus.Publish("users.created", eventbus.Event{Name: "created", Payload: "user-1"})
+}
+
+func replayDemo(bus *eventbus.Bus) {
+	fmt.Println("\n--- replay on subscribe ---")
+
+	bus.Publish("inventory", eventbus.Event{Name: "restocked", Payload: "widget x10"})
+	bus.Publish("inventory", eventbus.Event{Name: "restocked", Payload: "gadget x5"})
+
+	bus.SubscribeWithReplay("inventory", 5, func(e eventbus.Event) {
+		fmt.Printf("[late subscriber] catching up on: %v\n", e.Payload)
+	})
 }
