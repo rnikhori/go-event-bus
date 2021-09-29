@@ -12,6 +12,9 @@ func main() {
 	basicDemo(bus)
 	wildcardDemo(bus)
 	replayDemo(bus)
+	priorityAndAsyncDemo(bus)
+
+	fmt.Printf("\n--- stats ---\n%+v\n", bus.Stats())
 }
 
 func basicDemo(bus *eventbus.Bus) {
@@ -60,4 +63,19 @@ func replayDemo(bus *eventbus.Bus) {
 	bus.SubscribeWithReplay("inventory", 5, func(e eventbus.Event) {
 		fmt.Printf("[late subscriber] catching up on: %v\n", e.Payload)
 	})
+}
+
+func priorityAndAsyncDemo(bus *eventbus.Bus) {
+	fmt.Println("\n--- priority and async publish ---")
+
+	bus.SubscribeWithPriority("checkout", 10, func(e eventbus.Event) {
+		fmt.Println("[validate] running first (priority 10)")
+	})
+	bus.SubscribeWithPriority("checkout", 0, func(e eventbus.Event) {
+		fmt.Println("[notify] running after validation (priority 0)")
+	})
+
+	handle := bus.PublishAsync("checkout", eventbus.Event{Name: "completed", Payload: "order-789"})
+	handle.Wait()
+	fmt.Println("async checkout handlers finished")
 }
