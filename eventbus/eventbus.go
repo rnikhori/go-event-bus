@@ -1,4 +1,18 @@
-// Package eventbus provides a minimal in-memory, thread-safe publish/subscribe bus.
+// Package eventbus provides an in-memory, thread-safe publish/subscribe
+// bus built entirely on the standard library.
+//
+// Beyond plain Subscribe/Publish/Unsubscribe, it supports:
+//
+//   - Wildcard topic subscriptions, e.g. "orders.*" (see MatchTopic).
+//   - Handler priority for synchronous Publish (SubscribeWithPriority).
+//   - Panic recovery during dispatch, with an optional OnPanic hook.
+//   - Per-topic event history with catch-up delivery for late
+//     subscribers (SubscribeWithReplay).
+//   - Asynchronous publish with a Handle to wait for completion
+//     (PublishAsync).
+//   - Bus-wide and per-topic publish/delivery metrics (Stats).
+//   - Clean shutdown that stops accepting new work (Close).
+//   - A generic TypedBus[T] wrapper for a type-safe payload API.
 package eventbus
 
 import (
