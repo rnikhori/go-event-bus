@@ -109,6 +109,16 @@ func (b *Bus) subscribeLocked(topic string, priority int, handler Handler) uint6
 	return id
 }
 
+// SubscriberCount returns the number of handlers currently registered
+// under the exact pattern string originally passed to Subscribe. It does
+// not count handlers registered under a different pattern that would also
+// match the same topic at publish time.
+func (b *Bus) SubscriberCount(topic string) int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return len(b.subs[topic])
+}
+
 // Unsubscribe removes the subscription with the given id, registered under
 // the exact pattern string originally passed to Subscribe, if present.
 func (b *Bus) Unsubscribe(topic string, id uint64) {

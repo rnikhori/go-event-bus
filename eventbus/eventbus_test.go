@@ -149,6 +149,27 @@ func TestEqualPriorityKeepsSubscriptionOrder(t *testing.T) {
 	}
 }
 
+func TestSubscriberCountTracksRegistrationsAndUnsubscribe(t *testing.T) {
+	bus := New()
+
+	if got := bus.SubscriberCount("topic"); got != 0 {
+		t.Fatalf("expected 0 subscribers before any Subscribe, got %d", got)
+	}
+
+	id1 := bus.Subscribe("topic", func(e Event) {})
+	bus.Subscribe("topic", func(e Event) {})
+
+	if got := bus.SubscriberCount("topic"); got != 2 {
+		t.Fatalf("expected 2 subscribers, got %d", got)
+	}
+
+	bus.Unsubscribe("topic", id1)
+
+	if got := bus.SubscriberCount("topic"); got != 1 {
+		t.Fatalf("expected 1 subscriber after unsubscribe, got %d", got)
+	}
+}
+
 func TestUnsubscribeStopsDelivery(t *testing.T) {
 	bus := New()
 	count := 0
