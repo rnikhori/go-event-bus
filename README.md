@@ -1,6 +1,19 @@
 # go-event-bus
 
-A minimal, thread-safe in-memory pub/sub event bus for Go, built on the standard library only.
+A thread-safe in-memory pub/sub event bus for Go, built on the standard
+library only.
+
+## Features
+
+- [Basic pub/sub](#usage) with `Subscribe`, `Publish`, `Unsubscribe`
+- [Wildcard topic subscriptions](#wildcard-subscriptions), e.g. `orders.*`
+- [Panic isolation](#panic-isolation) during dispatch, with an `OnPanic` hook
+- [Handler priority](#handler-priority) for synchronous `Publish`
+- [Metrics](#metrics) via `Stats()`, bus-wide and per topic
+- [Event history and replay](#event-history-and-replay) for late subscribers
+- [Async publish](#async-publish) via `PublishAsync` and `Handle`
+- [Clean shutdown](#shutdown) via `Close`
+- [Generic typed wrapper](#typed-wrapper), `TypedBus[T]`
 
 ## Usage
 
