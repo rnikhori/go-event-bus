@@ -175,6 +175,27 @@ Multiple `TypedBus` wrappers, including for different payload types, can
 share the same underlying `Bus`; a `TypedBus` handler silently ignores
 events whose payload isn't of type `T`.
 
+## Design notes
+
+- **Thread-safety.** Every exported method on `Bus` is safe to call
+  concurrently from multiple goroutines. Handlers are always invoked
+  outside of the bus's internal lock, so a slow or blocking handler does
+  not stall other callers of `Subscribe`/`Publish`/`Stats`/etc.
+- **Ordering.** `Publish` delivers to matching handlers in subscription
+  order, then stably reordered by priority (highest first). `PublishAsync`
+  makes no ordering guarantee between handlers, including handlers at
+  different priorities, since they run concurrently.
+- **Panics.** A handler that panics during dispatch (sync or async) is
+  recovered and still counts toward `Stats().Delivered`; it does not stop
+  delivery to the remaining handlers for that event.
+- **History.** Each topic retains up to the largest capacity ever
+  requested via `SubscribeWithReplay` for that topic (64 events by
+  default). History is keyed by the exact topic string published to, not
+  by subscription pattern.
+- **Close.** `Close` is a point-in-time switch: it rejects new
+  subscriptions and publishes from that moment on, but it does not cancel
+  or wait for handlers already dispatched by an in-flight `PublishAsync`.
+
 Run the demo:
 
 ```sh
