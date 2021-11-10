@@ -20,11 +20,16 @@ import (
 	"sync"
 )
 
+// Event is the message delivered to subscribers. Name is typically a
+// short, human-readable description of what happened (independent of the
+// topic string it was published on); Payload carries any associated data.
 type Event struct {
 	Name    string
 	Payload interface{}
 }
 
+// Handler is a function invoked with each Event delivered to a
+// subscription.
 type Handler func(event Event)
 
 // PanicHandler is invoked, outside of any internal lock, whenever a
