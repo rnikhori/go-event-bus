@@ -124,6 +124,23 @@ func (b *Bus) SubscriberCount(topic string) int {
 	return len(b.subs[topic])
 }
 
+// Topics returns the distinct pattern strings that currently have at least
+// one subscription, in no particular order. Each entry is exactly what
+// was passed to Subscribe/SubscribeWithPriority/SubscribeWithReplay, so a
+// wildcard pattern like "orders.*" appears as-is rather than expanded.
+func (b *Bus) Topics() []string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	topics := make([]string, 0, len(b.subs))
+	for pattern, subs := range b.subs {
+		if len(subs) > 0 {
+			topics = append(topics, pattern)
+		}
+	}
+	return topics
+}
+
 // Unsubscribe removes the subscription with the given id, registered under
 // the exact pattern string originally passed to Subscribe, if present.
 func (b *Bus) Unsubscribe(topic string, id uint64) {

@@ -2,6 +2,7 @@ package eventbus
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -146,6 +147,32 @@ func TestEqualPriorityKeepsSubscriptionOrder(t *testing.T) {
 	want := []string{"first", "second", "third"}
 	if !reflect.DeepEqual(order, want) {
 		t.Fatalf("expected dispatch order %v, got %v", want, order)
+	}
+}
+
+func TestTopicsListsOnlyPatternsWithActiveSubscriptions(t *testing.T) {
+	bus := New()
+
+	if got := bus.Topics(); len(got) != 0 {
+		t.Fatalf("expected no topics on a fresh bus, got %v", got)
+	}
+
+	id := bus.Subscribe("orders", func(e Event) {})
+	bus.Subscribe("orders.*", func(e Event) {})
+
+	got := bus.Topics()
+	sort.Strings(got)
+	want := []string{"orders", "orders.*"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected topics %v, got %v", want, got)
+	}
+
+	bus.Unsubscribe("orders", id)
+
+	got = bus.Topics()
+	want = []string{"orders.*"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected topics %v after unsubscribe, got %v", want, got)
 	}
 }
 
