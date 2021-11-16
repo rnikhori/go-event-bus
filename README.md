@@ -175,6 +175,57 @@ Multiple `TypedBus` wrappers, including for different payload types, can
 share the same underlying `Bus`; a `TypedBus` handler silently ignores
 events whose payload isn't of type `T`.
 
+## Putting it together
+
+A single bus combining several features: a typed wrapper, a wildcard
+audit subscriber, a priority-ordered validation step, async notification,
+and a metrics snapshot.
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/rnikhori/go-event-bus/eventbus"
+)
+
+type OrderPlaced struct {
+	ID string
+}
+
+func main() {
+	bus := eventbus.New()
+	defer bus.Close()
+
+	bus.OnPanic(func(topic string, e eventbus.Event, recovered interface{}) {
+		log.Printf("handler for %q panicked: %v", topic, recovered)
+	})
+
+	bus.Subscribe("orders.*", func(e eventbus.Event) {
+		fmt.Printf("[audit] %s: %v\n", e.Name, e.Payload)
+	})
+
+	orders := eventbus.NewTyped[OrderPlaced](bus)
+	orders.SubscribeWithPriority("orders.placed", 10, func(name string, p OrderPlaced) {
+		fmt.Println("[validate]", p.ID)
+	})
+	orders.SubscribeWithPriority("orders.placed", 0, func(name string, p OrderPlaced) {
+		fmt.Println("[fulfil]", p.ID)
+	})
+
+	orders.Publish("orders.placed", OrderPlaced{ID: "order-1"})
+	orders.PublishAsync("orders.placed", OrderPlaced{ID: "order-2"}).Wait()
+
+	bus.SubscribeWithReplay("orders.placed", 5, func(e eventbus.Event) {
+		fmt.Println("[late subscriber] caught up on:", e.Payload)
+	})
+
+	fmt.Printf("%+v\n", bus.Stats())
+}
+```
+
 ## Design notes
 
 - **Thread-safety.** Every exported method on `Bus` is safe to call
