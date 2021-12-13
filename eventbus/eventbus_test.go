@@ -197,6 +197,24 @@ func TestSubscriberCountTracksRegistrationsAndUnsubscribe(t *testing.T) {
 	}
 }
 
+func TestUnsubscribeAllRemovesEveryHandlerOnPattern(t *testing.T) {
+	bus := New()
+	bus.Subscribe("topic", func(e Event) {})
+	bus.Subscribe("topic", func(e Event) {})
+	bus.Subscribe("other", func(e Event) {})
+
+	removed := bus.UnsubscribeAll("topic")
+	if removed != 2 {
+		t.Fatalf("expected UnsubscribeAll to report 2 removed handlers, got %d", removed)
+	}
+	if got := bus.SubscriberCount("topic"); got != 0 {
+		t.Fatalf("expected 0 subscribers on topic after UnsubscribeAll, got %d", got)
+	}
+	if got := bus.SubscriberCount("other"); got != 1 {
+		t.Fatalf("expected other topic to be unaffected, got %d subscribers", got)
+	}
+}
+
 func TestUnsubscribeStopsDelivery(t *testing.T) {
 	bus := New()
 	count := 0

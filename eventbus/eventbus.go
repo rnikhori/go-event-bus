@@ -156,6 +156,18 @@ func (b *Bus) Unsubscribe(topic string, id uint64) {
 	}
 }
 
+// UnsubscribeAll removes every handler registered under the exact pattern
+// string originally passed to Subscribe, and returns how many handlers
+// were removed.
+func (b *Bus) UnsubscribeAll(topic string) int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	n := len(b.subs[topic])
+	delete(b.subs, topic)
+	return n
+}
+
 // matchingSubs returns every subscription whose registered pattern matches
 // topic, ordered first by subscription id (the order handlers were
 // registered in) and then stably by priority, highest first.
