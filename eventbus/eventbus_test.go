@@ -229,3 +229,41 @@ func TestUnsubscribeStopsDelivery(t *testing.T) {
 		t.Fatalf("expected handler to be called exactly once before unsubscribe, got %d", count)
 	}
 }
+
+func TestUnsubscribeUnknownIDIsNoOp(t *testing.T) {
+	bus := New()
+	count := 0
+	bus.Subscribe("topic", func(e Event) { count++ })
+
+	bus.Unsubscribe("topic", 9999)
+	bus.Publish("topic", Event{Name: "ping"})
+
+	if count != 1 {
+		t.Fatalf("expected unsubscribing an unknown id to leave the real subscriber intact, got %d calls", count)
+	}
+}
+
+func TestUnsubscribeTwiceIsSafe(t *testing.T) {
+	bus := New()
+	id := bus.Subscribe("topic", func(e Event) {})
+
+	bus.Unsubscribe("topic", id)
+	bus.Unsubscribe("topic", id)
+
+	if got := bus.SubscriberCount("topic"); got != 0 {
+		t.Fatalf("expected 0 subscribers after double unsubscribe, got %d", got)
+	}
+}
+
+func TestUnsubscribeFromDifferentTopicIsNoOp(t *testing.T) {
+	bus := New()
+	count := 0
+	id := bus.Subscribe("topic", func(e Event) { count++ })
+
+	bus.Unsubscribe("other-topic", id)
+	bus.Publish("topic", Event{Name: "ping"})
+
+	if count != 1 {
+		t.Fatalf("expected unsubscribing under the wrong topic to leave the subscriber intact, got %d calls", count)
+	}
+}
