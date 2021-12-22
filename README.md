@@ -14,6 +14,7 @@ library only.
 - [Async publish](#async-publish) via `PublishAsync` and `Handle`
 - [Clean shutdown](#shutdown) via `Close`
 - [Generic typed wrapper](#typed-wrapper), `TypedBus[T]`
+- [Introspection](#introspection) via `Topics`, `SubscriberCount`, `UnsubscribeAll`
 
 ## Usage
 
@@ -224,6 +225,23 @@ func main() {
 
 	fmt.Printf("%+v\n", bus.Stats())
 }
+```
+
+## Introspection
+
+`SubscriberCount` and `Topics` let you inspect what's currently
+registered, and `UnsubscribeAll` removes every handler under a pattern at
+once:
+
+```go
+bus.Subscribe("orders", func(e eventbus.Event) {})
+bus.Subscribe("orders.*", func(e eventbus.Event) {})
+
+fmt.Println(bus.Topics())             // [orders orders.*] (order not guaranteed)
+fmt.Println(bus.SubscriberCount("orders")) // 1
+
+removed := bus.UnsubscribeAll("orders.*")
+fmt.Println(removed) // 1
 ```
 
 ## Design notes
